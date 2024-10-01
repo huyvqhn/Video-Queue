@@ -1,0 +1,6 @@
+CREATE TABLE `processed_videos` (
+    `id` int NOT NULL AUTO_INCREMENT,
+    `filename` varchar(45) NOT NULL,
+    `resolution` varchar(10) NOT NULL,
+    PRIMARY KEY (`id`)
+);

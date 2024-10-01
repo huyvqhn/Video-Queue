@@ -1,6 +1,9 @@
 package com.videoqueue.videoqueueprocessing.service;
 
 import com.rabbitmq.client.Channel;
+import com.videoqueue.videoqueueprocessing.model.ProcessedVideo;
+import com.videoqueue.videoqueueprocessing.repository.ProcessedVideoRepository;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.core.Message;
@@ -9,11 +12,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
 import java.util.Objects;
 
 @Service
+@RequiredArgsConstructor
 public class VideoProcessingService {
 
     private static final Logger logger = LoggerFactory.getLogger(VideoProcessingService.class);
@@ -21,9 +23,6 @@ public class VideoProcessingService {
     public static final String FFMPEG_EXE = "C:\\ffmpeg\\bin\\ffmpeg.exe";
     public static final String SCALE_480 = "scale=-640:480";
     public static final String SCALE_720 = "scale=-1280:720";
-
-    @Autowired
-    private QueueLockService queueLockService;
 
     @Value("${processed.directory}")
     private String processedDirectory;
@@ -36,6 +35,8 @@ public class VideoProcessingService {
     @Autowired
     private FFmpegProcessManager ffmpegProcessManager480;
 
+    private final ProcessedVideoRepository processedVideoRepository;
+
     @RabbitListener(queues = "video480p")
     public void process480pVideo(Message message, Channel channel) throws Exception {
         synchronized (lock) {
@@ -46,7 +47,13 @@ public class VideoProcessingService {
         }
         try {
             String filePath = new String(message.getBody());
-            processVideoWithResolution(UPLOADS, filePath, this.fileNameFromPath(filePath), "480p");
+            String fileName = this.fileNameFromPath(filePath);
+            processVideoWithResolution(UPLOADS, filePath, fileName, "480p");
+            ProcessedVideo processedVideo = new ProcessedVideo();
+            processedVideo.setFilename(fileName);
+            processedVideo.setResolution("480p");
+
+            processedVideoRepository.save(processedVideo);
             channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
         } catch (Exception e) {
             channel.basicReject(message.getMessageProperties().getDeliveryTag(), false);
@@ -70,8 +77,15 @@ public class VideoProcessingService {
         }
         try {
             String filePath = new String(message.getBody());
+            String fileName = this.fileNameFromPath(filePath);
             processVideoWithResolution(UPLOADS, filePath, this.fileNameFromPath(filePath), "720p");
             channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
+
+            ProcessedVideo processedVideo = new ProcessedVideo();
+            processedVideo.setFilename(fileName);
+            processedVideo.setResolution("720p");
+
+            processedVideoRepository.save(processedVideo);
         } catch (Exception e) {
             channel.basicReject(message.getMessageProperties().getDeliveryTag(), false);
         }
