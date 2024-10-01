@@ -48,7 +48,6 @@ public class VideoController {
             throw new IllegalArgumentException("The input resolution is not supported");
         }
 
-
         try {
             new File(processedDirectory).mkdirs();
 
