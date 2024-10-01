@@ -1,7 +1,6 @@
 package com.videoqueue.videoqueueprocessing.service;
 
 import com.rabbitmq.client.Channel;
-import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.core.Message;
@@ -12,13 +11,14 @@ import org.springframework.stereotype.Service;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.util.Objects;
 
 @Service
 public class VideoProcessingService {
 
     private static final Logger logger = LoggerFactory.getLogger(VideoProcessingService.class);
     public static final String UPLOADS = "uploads";
-    public static final String FFMPEG_EXE = "D:\\ffmpeg\\bin\\ffmpeg.exe";
+    public static final String FFMPEG_EXE = "C:\\ffmpeg\\bin\\ffmpeg.exe";
     public static final String SCALE_480 = "scale=-640:480";
     public static final String SCALE_720 = "scale=-1280:720";
 
@@ -36,7 +36,7 @@ public class VideoProcessingService {
     @Autowired
     private FFmpegProcessManager ffmpegProcessManager480;
 
-    @RabbitListener(queues = "video_480p")
+    @RabbitListener(queues = "video480p")
     public void process480pVideo(Message message, Channel channel) throws Exception {
         synchronized (lock) {
             isProcessing480p = true;
@@ -61,7 +61,7 @@ public class VideoProcessingService {
         }
     }
 
-    @RabbitListener(queues = "video_720p")
+    @RabbitListener(queues = "video720p")
     public void process720pVideo(Message message, Channel channel) throws Exception {
         synchronized (lock) {
             while (isProcessing480p) {
@@ -93,22 +93,10 @@ public class VideoProcessingService {
             outputFilePath
         };
         try {
-            if (resolution == "720p") {
+            if (Objects.equals(resolution, "720p")) {
                 ffmpegProcessManager720.startFFmpeg(command);
-                try (BufferedReader reader = new BufferedReader(new InputStreamReader(ffmpegProcessManager720.getInputStream()))) {
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        System.out.println(line);
-                    }
-                }
             } else if (resolution.equals("480p")) {
                 ffmpegProcessManager480.startFFmpeg(command);
-            }
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(ffmpegProcessManager480.getInputStream()))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    System.out.println(line);
-                }
             }
 
         } catch (Exception e) {
